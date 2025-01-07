@@ -14,6 +14,7 @@ import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableNativeArray;
 import com.facebook.react.bridge.WritableNativeMap;
 import com.taluttasgiran.rnsecurestorage.secureStorage.SecureStorage;
+import com.taluttasgiran.rnsecurestorage.RNKeyStore;
 
 public class RNSecureStorageModule extends ReactContextBaseJavaModule {
     public static final String RN_SECURE_STORAGE = "RNSecureStorage";
@@ -38,6 +39,10 @@ public class RNSecureStorageModule extends ReactContextBaseJavaModule {
     private final PreferencesStorage prefsStorage;
 
     /**
+     * RNKeyStore instance.
+     */
+    private final RNKeyStore rnKeyStore;
+    /**
      * Default constructor.
      */
     public RNSecureStorageModule(@NonNull final ReactApplicationContext reactContext) {
@@ -48,6 +53,7 @@ public class RNSecureStorageModule extends ReactContextBaseJavaModule {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    
     }
 
     /**
@@ -71,6 +77,7 @@ public class RNSecureStorageModule extends ReactContextBaseJavaModule {
         } catch (Exception e) {
             promise.reject("RNSecureStorage: An error occurred during key store", e);
         }
+        rnKeyStore = new RNKeyStore();
     }
 
     /**
@@ -83,7 +90,11 @@ public class RNSecureStorageModule extends ReactContextBaseJavaModule {
             if (encryptedValue != null) {
                 promise.resolve(secureStorage.decrypt(encryptedValue));
             } else {
-                promise.reject(Errors.NOT_FOUND, "RNSecureStorage: Value for " + key + " does not exist.");
+                if (rnKeyStore.exists(getReactApplicationContext(), key)) {
+                    promise.resolve(rnKeyStore.getPlainText(getReactApplicationContext(), key));
+                } else {
+                    promise.reject(Errors.NOT_FOUND, "RNSecureStorage: Value for " + key + " does not exist.");
+                }
             }
         } catch (Exception e) {
             promise.reject(e);
@@ -218,5 +229,4 @@ public class RNSecureStorageModule extends ReactContextBaseJavaModule {
             promise.reject(e);
         }
     }
-
 }
