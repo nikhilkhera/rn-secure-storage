@@ -79,4 +79,30 @@ public class SecureStorage {
             return null;
         }
     }
+    public String decryptV2(String encrypted) {
+        try {
+            if (encrypted.contains(":")) {
+                // Use 3.01 decryption
+                String[] parts = encrypted.split(":");
+                byte[] iv = Base64.decode(parts[0], Base64.DEFAULT);
+                byte[] encryptedBytes = Base64.decode(parts[1], Base64.DEFAULT);
+    
+                SecretKey key = (SecretKey) keyStore.getKey(KEY_ALIAS, null);
+                Cipher cipher = Cipher.getInstance(TRANSFORMATION);
+                cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(8 * GCM_TAG_LENGTH, iv));
+                byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
+                return new String(decryptedBytes);
+            } else {
+                // Use 2.07 decryption
+                SecretKey key = (SecretKey) keyStore.getKey(KEY_ALIAS, null);
+                Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+                cipher.init(Cipher.DECRYPT_MODE, key);
+                byte[] decryptedBytes = cipher.doFinal(Base64.decode(encrypted, Base64.DEFAULT));
+                return new String(decryptedBytes);
+            }
+        } catch (Exception e) {
+            // Handle exceptions
+            return null;
+        }
+    }
 }
