@@ -163,4 +163,21 @@ public class RNKeyStore {
         }
     }
 
+    public void removeOldKey(ReactApplicationContext context, String key) {
+        ArrayList<Boolean> fileDeleted = new ArrayList<>();
+        try {
+            for (String filename : new String[]{
+                    Constants.SKS_DATA_FILENAME + key,
+                    Constants.SKS_KEY_FILENAME + key,
+            }) {
+                fileDeleted.add(context.deleteFile(filename));
+            }
+            // Only log if deletion failed - we're doing silent migration
+            if (!fileDeleted.get(0) || !fileDeleted.get(1)) {
+                Log.w(Constants.TAG, "Could not delete one or more legacy keystore files for key: " + key);
+            }
+        } catch (Exception e) {
+            Log.w(Constants.TAG, "Error while trying to delete legacy keystore files: " + e.getMessage());
+        }
+    }
 }

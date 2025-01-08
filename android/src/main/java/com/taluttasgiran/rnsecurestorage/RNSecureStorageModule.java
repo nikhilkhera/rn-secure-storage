@@ -48,12 +48,12 @@ public class RNSecureStorageModule extends ReactContextBaseJavaModule {
     public RNSecureStorageModule(@NonNull final ReactApplicationContext reactContext) {
         super(reactContext);
         prefsStorage = new PreferencesStorage(reactContext);
+        rnKeyStore = new RNKeyStore();
         try {
             secureStorage = new SecureStorage();
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    
     }
 
     /**
@@ -77,7 +77,6 @@ public class RNSecureStorageModule extends ReactContextBaseJavaModule {
         } catch (Exception e) {
             promise.reject("RNSecureStorage: An error occurred during key store", e);
         }
-        rnKeyStore = new RNKeyStore();
     }
 
     /**
@@ -88,10 +87,29 @@ public class RNSecureStorageModule extends ReactContextBaseJavaModule {
         try {
             String encryptedValue = prefsStorage.getEncryptedEntry(key);
             if (encryptedValue != null) {
+
+                // if key is also in RNKeyStore, remove it
+                if (rnKeyStore.exists(getReactApplicationContext(), key))
+                    rnKeyStore.removeKey(getReactApplicationContext(), key);
+                };
+                
                 promise.resolve(secureStorage.decrypt(encryptedValue));
+              
             } else {
+                // Check RNKeyStore for legacy data
                 if (rnKeyStore.exists(getReactApplicationContext(), key)) {
-                    promise.resolve(rnKeyStore.getPlainText(getReactApplicationContext(), key));
+                    // Get value from RNKeyStore
+                    String plainValue = rnKeyStore.getPlainText(getReactApplicationContext(), key);
+                    
+                    // Migrate to new storage
+                    String encryptedMigratedValue = secureStorage.encrypt(plainValue);
+                    prefsStorage.storeEncryptedEntry(key, encryptedMigratedValue);
+                    
+                    // Remove from RNKeyStore
+                    rnKeyStore.removeOldKey(getReactApplicationContext(), key);
+                    
+                    // Return the value
+                    promise.resolve(plainValue);
                 } else {
                     promise.reject(Errors.NOT_FOUND, "RNSecureStorage: Value for " + key + " does not exist.");
                 }
